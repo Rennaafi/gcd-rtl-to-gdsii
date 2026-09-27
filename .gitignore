@@ -1,0 +1,18 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Large binary EDA outputs — not meant to live in this portfolio repo.
+# Only curated reports/images/configs are tracked here; regenerate the
+# rest by re-running the flow (see README > Reproducing This Work).
+*.odb
+*.gds
+*.def
+*.spef
+*.lef
+
+# Local notes (repo metadata kept outside version control)
+REPO_INFO.txt

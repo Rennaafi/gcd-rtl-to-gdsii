@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RTL-to-GDSII Review — GCD on OpenROAD-flow-scripts</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1b2030; --border:#2a3040;
+    --text:#e7e9ee; --text-dim:#a7adba; --accent:#5fb3ff; --accent2:#7de6b8;
+    --warn:#ff8b6b; --bad:#ff6b6b; --good:#5fe08a; --code-bg:#0b0d12;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f7f8fa; --panel:#ffffff; --panel2:#eef1f6; --border:#dde2ea;
+      --text:#1a1d24; --text-dim:#565d6b; --accent:#0b6fd6; --accent2:#0e8f5f;
+      --warn:#b2540a; --bad:#c62828; --good:#1c8a4b; --code-bg:#eef1f6;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; padding-bottom:4rem;
+  }
+  a{color:var(--accent)}
+  .wrap{display:flex; max-width:1280px; margin:0 auto; align-items:flex-start; gap:2rem; padding:0 1.25rem}
+  nav{
+    position:sticky; top:0; align-self:flex-start; width:250px; flex-shrink:0;
+    padding:1.5rem 0.5rem; max-height:100vh; overflow-y:auto;
+  }
+  nav h3{font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:1.2rem 0 0.4rem}
+  nav a{display:block; font-size:0.88rem; color:var(--text-dim); text-decoration:none; padding:0.15rem 0; border-left:2px solid transparent}
+  nav a:hover{color:var(--accent); border-left-color:var(--accent)}
+  main{flex:1; min-width:0; padding:2rem 0 4rem}
+  header.title{padding:2.5rem 0 1.5rem; border-bottom:1px solid var(--border); margin-bottom:2rem}
+  header.title h1{font-size:1.9rem; margin:0 0 0.4rem}
+  header.title p{color:var(--text-dim); margin:0.2rem 0}
+  section{margin-bottom:3rem; scroll-margin-top:1rem}
+  h2{font-size:1.4rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem; margin-top:0}
+  h2 .tag{font-size:0.7rem; text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:0.1rem 0.6rem; margin-left:0.6rem; vertical-align:middle}
+  h3{font-size:1.1rem; color:var(--accent); margin-top:1.6rem}
+  p{max-width:75ch}
+  .lead{color:var(--text-dim); font-size:1.05rem; max-width:70ch}
+  .grid-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; margin:1.2rem 0}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:1rem 1.1rem}
+  .card h4{margin:0 0 0.4rem; font-size:0.95rem; color:var(--accent)}
+  .card p{margin:0.3rem 0 0; font-size:0.88rem; color:var(--text-dim)}
+  .step-flow{display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; margin:1.4rem 0}
+  .step{background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:0.55rem 0.9rem; font-size:0.85rem; white-space:nowrap}
+  .step.check{border-color:var(--warn); color:var(--warn)}
+  .arrow{color:var(--text-dim); font-size:1.1rem}
+  table{border-collapse:collapse; width:100%; margin:1.2rem 0; font-size:0.88rem}
+  th,td{border:1px solid var(--border); padding:0.5rem 0.7rem; text-align:left}
+  th{background:var(--panel2); color:var(--text-dim); font-weight:600; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.03em}
+  td.num{font-variant-numeric:tabular-nums; text-align:right}
+  tr.highlight td{background:rgba(95,224,138,0.08); font-weight:600}
+  tr.bad td{color:var(--bad)}
+  .pill{display:inline-block; padding:0.1rem 0.55rem; border-radius:999px; font-size:0.75rem; font-weight:600}
+  .pill.good{background:rgba(95,224,138,0.15); color:var(--good)}
+  .pill.bad{background:rgba(255,107,107,0.15); color:var(--bad)}
+  code, pre{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace}
+  code{background:var(--code-bg); padding:0.1rem 0.35rem; border-radius:4px; font-size:0.85em}
+  pre{background:var(--code-bg); border:1px solid var(--border); border-radius:8px; padding:1rem 1.1rem; overflow-x:auto; font-size:0.82rem; line-height:1.5}
+  pre code{background:none; padding:0}
+  .path-trace{background:var(--code-bg); border:1px solid var(--border); border-left:3px solid var(--warn); border-radius:6px; padding:0.8rem 1rem; font-size:0.82rem; font-family:monospace; overflow-x:auto; white-space:pre}
+  .callout{border-radius:10px; padding:1rem 1.2rem; margin:1.2rem 0; border:1px solid var(--border)}
+  .callout.info{background:rgba(95,179,255,0.08); border-color:var(--accent)}
+  .callout.try{background:rgba(125,230,184,0.08); border-color:var(--accent2)}
+  .callout h4{margin:0 0 0.5rem; color:inherit}
+  figure{margin:1.4rem 0}
+  figure img{max-width:100%; border-radius:8px; border:1px solid var(--border); display:block}
+  figcaption{font-size:0.82rem; color:var(--text-dim); margin-top:0.5rem}
+  .img-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.2rem}
+  .invasiveness{display:flex; align-items:center; gap:0.4rem; margin:0.3rem 0 1rem; font-size:0.8rem; color:var(--text-dim)}
+  .bar{height:6px; border-radius:3px; background:var(--panel2); flex:1; overflow:hidden; position:relative}
+  .bar span{position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,var(--good),var(--warn))}
+  .glossary dt{font-weight:600; color:var(--accent); margin-top:0.8rem}
+  .glossary dd{margin:0.15rem 0 0; color:var(--text-dim)}
+  footer{max-width:75ch; color:var(--text-dim); font-size:0.82rem; border-top:1px solid var(--border); padding-top:1rem; margin-top:3rem}
+  @media (max-width:900px){ nav{display:none} .wrap{padding:0 1rem} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <h3>Contents</h3>
+  <a href="#bigpicture">1. The Big Picture</a>
+  <a href="#stages">2. The Six Stages</a>
+  <a href="#vocab">3. Key Vocabulary</a>
+  <a href="#design">4. The Design: GCD</a>
+  <a href="#journey">5. Our Journey</a>
+  <a href="#sweep">6. PPA Sweep</a>
+  <a href="#visuals">7. Visual Outputs</a>
+  <a href="#challenge">8. Beyond the Clock Fix</a>
+  <a href="#crosscheck">9. Cross-Checks</a>
+  <a href="#glossary">10. Glossary</a>
+</nav>
+<main>
+<header class="title">
+  <h1>RTL → GDSII: Physical Design Review</h1>
+  <p><strong>Design:</strong> GCD (Greatest Common Divisor unit) &nbsp;·&nbsp; <strong>Flow:</strong> OpenROAD-flow-scripts (ORFS) &nbsp;·&nbsp; <strong>Primary platform:</strong> nangate45 (cross-checked against sky130hd &amp; ibex_core)</p>
+  <p>Personal review notes from a hands-on walkthrough of the full digital physical design flow — what each stage does, why it exists, how to read real signoff data, and how to actually fix a timing problem instead of just loosening the clock.</p>
+</header>
+
+<section id="bigpicture">
+  <h2>1. The Big Picture</h2>
+  <p class="lead">RTL describes <em>behavior</em> — what a circuit should do. GDSII describes <em>geometry</em> — exact shapes, on exact layers, at exact coordinates, ready for a fab to manufacture as silicon. Everything between the two is the process of turning "what it should do" into "where every transistor and wire physically sits."</p>
+  <div class="grid-cards">
+    <div class="card"><h4>RTL</h4><p>Verilog/VHDL. A register adds two numbers on a clock edge. No size, no position, no physical reality yet.</p></div>
+    <div class="card"><h4>Netlist</h4><p>A list of standard cells (AND, NAND, flip-flops…) wired together, implementing the same behavior — still no physical placement.</p></div>
+    <div class="card"><h4>Layout</h4><p>Every cell has an (x,y) position, every wire is drawn on a real metal layer.</p></div>
+    <div class="card"><h4>GDSII</h4><p>The final, checked, manufacturable geometry file streamed out for the fab.</p></div>
+  </div>
+</section>
+
+<section id="stages">
+  <h2>2. The Six Stages <span class="tag">ORFS pipeline</span></h2>
+  <div class="step-flow">
+    <div class="step">RTL</div><div class="arrow">→</div>
+    <div class="step">1. Synthesis</div><div class="arrow">→</div>
+    <div class="step">2. Floorplan</div><div class="arrow">→</div>
+    <div class="step">3. Placement</div><div class="arrow">→</div>
+    <div class="step">4. CTS</div><div class="arrow">→</div>
+    <div class="step">5. Routing</div><div class="arrow">→</div>
+    <div class="step check">6. STA Signoff</div><div class="arrow">→</div>
+    <div class="step">GDSII</div>
+  </div>
+  <table>
+    <tr><th>Stage</th><th>Tool</th><th>What it does</th><th>Why it exists</th></tr>
+    <tr><td><strong>Synthesis</strong></td><td>Yosys</td><td>Converts RTL into a gate-level netlist using real standard cells from the PDK.</td><td>Behavior → components. No physical meaning yet, but now it's built from real, characterized building blocks.</td></tr>
+    <tr><td><strong>Floorplan</strong></td><td>OpenROAD</td><td>Sets die size, I/O pin locations, power straps, core rows.</td><td>Defines the "footprint of the house" before anything is placed inside it.</td></tr>
+    <tr><td><strong>Placement</strong></td><td>OpenROAD</td><td>Assigns every gate an actual (x,y) position, minimizing wire length/congestion.</td><td>Turns an abstract netlist into a real spatial arrangement — this is where chip size/speed/power start becoming real.</td></tr>
+    <tr><td><strong>CTS</strong> (Clock Tree Synthesis)</td><td>OpenROAD</td><td>Builds a balanced buffer tree distributing the clock to every flip-flop with near-equal delay.</td><td>If the clock arrives at wildly different times at different flops, the chip malfunctions (clock skew).</td></tr>
+    <tr><td><strong>Routing</strong></td><td>OpenROAD</td><td>Draws the literal copper wires connecting every pin, across multiple metal layers.</td><td>Turns "these two pins connect" (abstract) into real, DRC-legal wire geometry.</td></tr>
+    <tr><td><strong>Signoff (STA / GDSII)</strong></td><td>OpenSTA (in OpenROAD)</td><td>Checks every path meets timing (setup/hold), checks DRC/LVS, streams out GDSII.</td><td>Confirms the chip will actually <em>work</em>, not just that it's geometrically complete.</td></tr>
+  </table>
+  <div class="callout info">
+    <h4>Important distinction we learned the hard way</h4>
+    <p style="margin:0">A flow finishing and producing a <code>.gds</code> file does <strong>not</strong> mean the chip works. ORFS will happily place, route, and stream out GDSII even with timing violations. Physical completion and timing signoff are separate questions — see §5.</p>
+  </div>
+</section>
+
+<section id="vocab">
+  <h2>3. Key Vocabulary</h2>
+  <h3>PDK — Process Design Kit</h3>
+  <p>The "materials catalog" for a specific manufacturing process: what standard cells look like, their delays, layer/spacing rules. <code>nangate45</code> is a synthetic academic 45nm-like library (fast to run, not real silicon). <code>sky130hd</code> is SkyWater's actual open-source 130nm process — real, fabricatable, but an older/slower node.</p>
+
+  <h3>SDC — Synopsys Design Constraints</h3>
+  <p>The file where <em>you</em> declare timing intent: what's the clock, how fast, how much I/O margin. STA checks the design against this file — it doesn't invent a target itself.</p>
+  <pre><code>set clk_period 0.5
+create_clock -name core_clock -period $clk_period [get_ports clk]
+set_input_delay  [expr $clk_period*0.2] -clock ... $non_clock_inputs
+set_output_delay [expr $clk_period*0.2] -clock ... [all_outputs]</code></pre>
+
+  <h3>STA — Static Timing Analysis</h3>
+  <p>Checks every register-to-register (and I/O) path using worst-case delay models — not simulation with test vectors. Two checks per path:</p>
+  <ul>
+    <li><strong>Setup</strong> — does data arrive with time to spare before the <em>next</em> clock edge? Fail → chip can't run this fast (or fails outright).</li>
+    <li><strong>Hold</strong> — does data stick around long enough not to be overwritten before the <em>current</em> edge finishes registering it? Fail → chip is broken at <em>any</em> speed (a race condition, not a speed limit) — more dangerous than a setup fail.</li>
+  </ul>
+
+  <h3>Slack, WNS, TNS</h3>
+  <p><strong>Slack</strong> = required arrival time − actual arrival time. Positive = safe margin. Negative = the signal arrived too late (setup) or too early (hold) — a real functional risk, not just "slower."</p>
+  <p><strong>WNS</strong> (Worst Negative Slack) = the single worst violation. <strong>TNS</strong> (Total Negative Slack) = sum of all violations across all paths. Signoff target: WNS ≥ 0, TNS = 0.</p>
+</section>
+
+<section id="design">
+  <h2>4. The Design: GCD</h2>
+  <p>Computes the Greatest Common Divisor via the classic subtraction-based Euclidean algorithm:</p>
+  <pre><code>while b != 0:
+    if a &lt; b: swap(a, b)
+    else:     a = a - b
+return a</code></pre>
+  <p>Split into two standard blocks — a pattern worth internalizing for any datapath design:</p>
+  <div class="grid-cards">
+    <div class="card"><h4>ctrl — the FSM ("brain")</h4><p>3 states: <strong>IDLE</strong> (latch inputs) → <strong>CALC</strong> (iterate swap/subtract every cycle until b==0) → <strong>DONE</strong> (hold result until accepted) → back to IDLE.</p></div>
+    <div class="card"><h4>dpath — the datapath ("muscle")</h4><p><code>a_reg</code>/<code>b_reg</code> hold the operands; a comparator checks <code>a&lt;b</code>; another checks <code>b==0</code>; a subtractor computes <code>a-b</code>; muxes pick what feeds back into the registers each cycle.</p></div>
+  </div>
+  <p>Ports: <code>clk</code>, <code>req_msg[31:0]</code> (two packed 16-bit operands in), <code>req_val/req_rdy</code> (input handshake), <code>resp_msg[15:0]</code> (result out), <code>resp_val/resp_rdy</code> (output handshake), <code>reset</code>.</p>
+  <p style="color:var(--text-dim); font-size:0.88rem">Note: the RTL we used is auto-generated by PyMTL (a Python HDL), hence hashed module names like <code>GcdUnitCtrlRTL_0x4d0fc71ead8d3d9e</code> — not representative of typical hand-written style, but functionally a clean, small teaching example.</p>
+</section>
+
+<section id="journey">
+  <h2>5. Our Journey — Diagnose &amp; Fix a Real Violation</h2>
+  <h3>Attempt 1 — an unrealistic clock (nangate45, 0.25 ns = 4 GHz)</h3>
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr class="bad"><td>WNS</td><td class="num">-0.16 ns</td></tr>
+    <tr class="bad"><td>TNS</td><td class="num">-7.18 ns</td></tr>
+    <tr class="bad"><td>Setup violations</td><td class="num">51</td></tr>
+    <tr><td>Hold violations</td><td class="num">0</td></tr>
+    <tr><td>Real achievable period (<code>period_min</code>)</td><td class="num">0.41 ns → fmax ≈ 2.44 GHz</td></tr>
+    <tr><td>Total power</td><td class="num">6.38 mW</td></tr>
+  </table>
+  <p>The worst path, traced directly from OpenSTA's <code>report_checks -path_delay max</code> (not guessed — read straight off the tool):</p>
+  <div class="path-trace">Startpoint: dpath.a_reg.out[12]  (register)
+  → NAND2 → INV → NOR2 → NAND2 → NOR2 → AND2 → NAND2
+  → NAND3 → NAND2 → BUF_X8 → INV_X8 → NAND2 → NAND3
+Endpoint:   dpath.b_reg.out[6]/D  (register)
+
+  14 logic gates deep · arrival 0.45 ns · required 0.29 ns
+  slack = -0.16 ns  (VIOLATED)</div>
+  <p>This path is the <code>a&lt;b</code> comparator result rippling through the FSM's control logic and back through <code>b_mux</code> into <code>b_reg</code> — a control-dependent datapath path, longer than a naive read of the RTL would suggest.</p>
+
+  <h3>Root cause</h3>
+  <p>Not a bug — an <strong>unrealistic constraint</strong>. We asked for something the physical logic cannot do. <code>report_clock_min_period</code> told us directly: the real ceiling is 0.41&nbsp;ns.</p>
+
+  <h3>The fix — relax to a real target (0.5 ns = 2 GHz)</h3>
+  <table>
+    <tr><th>Metric</th><th>Before (0.25 ns)</th><th>After (0.5 ns)</th></tr>
+    <tr><td>WNS</td><td class="num bad">-0.16 ns</td><td class="num good">+0.04 ns</td></tr>
+    <tr><td>TNS</td><td class="num bad">-7.18 ns</td><td class="num good">0.00 ns</td></tr>
+    <tr><td>Setup violations</td><td class="num bad">51</td><td class="num good">0</td></tr>
+    <tr class="highlight"><td>Total power</td><td class="num">6.38 mW</td><td class="num">2.22 mW <span class="pill good">-65%</span></td></tr>
+  </table>
+  <div class="callout info">
+    <h4>Why power dropped too</h4>
+    <p style="margin:0">Two compounding effects: (1) dynamic/switching power scales with clock frequency — a slower clock means less switching per second; (2) the optimizer was no longer <em>fighting</em> an impossible target — it stopped inserting extra buffers and up-sizing cells to chase 4 GHz, so it settled on smaller, cheaper gates. <strong>An unrealistic constraint doesn't just fail timing — it actively makes the chip bigger and hungrier</strong>, because the tools burn area/power trying (and failing) to satisfy it.</p>
+  </div>
+</section>
+
+<section id="sweep">
+  <h2>6. PPA Sweep — Seeing the Trade-off Curve</h2>
+  <p>Same design, same PDK, sweeping only the clock period target:</p>
+  <table>
+    <tr><th>Clock period</th><th>Target freq</th><th>WNS</th><th>TNS</th><th>Setup viol.</th><th>Achieved fmax</th><th>Stdcell area</th><th>Total power</th></tr>
+    <tr class="bad"><td>0.25 ns</td><td>4.00 GHz</td><td class="num">-0.16</td><td class="num">-7.18</td><td class="num">51</td><td class="num">~2.44 GHz</td><td class="num">–</td><td class="num">6.38 mW</td></tr>
+    <tr class="bad"><td>0.30 ns</td><td>3.33 GHz</td><td class="num">-0.11</td><td class="num">-4.77</td><td class="num">49</td><td class="num">2.42 GHz</td><td class="num">894.0 µm²</td><td class="num">4.98 mW</td></tr>
+    <tr class="bad"><td>0.40 ns</td><td>2.50 GHz</td><td class="num">-0.02</td><td class="num">-0.80</td><td class="num">45</td><td class="num">2.36 GHz</td><td class="num">855.7 µm²</td><td class="num">3.61 mW</td></tr>
+    <tr class="highlight"><td><strong>0.50 ns</strong></td><td>2.00 GHz</td><td class="num">+0.04</td><td class="num">0.00</td><td class="num">0</td><td class="num">2.22 GHz</td><td class="num">674.6 µm²</td><td class="num">2.22 mW</td></tr>
+    <tr><td>0.60 ns</td><td>1.67 GHz</td><td class="num">+0.12</td><td class="num">0.00</td><td class="num">0</td><td class="num">2.18 GHz</td><td class="num">674.8 µm²</td><td class="num">1.86 mW</td></tr>
+  </table>
+  <ul>
+    <li><strong>Diminishing returns past a point:</strong> "achieved fmax" barely moves (2.44 → 2.18 GHz) across the whole sweep even though the <em>target</em> swung from 4 GHz down to 1.67 GHz. This logic, in this library, tops out around <strong>~2.2–2.4 GHz no matter how hard you push it</strong>. Demanding more just burns area/power fighting a losing battle.</li>
+    <li><strong>0.5 ns is the real "knee" of the curve:</strong> first fully clean point, and going further to 0.6 ns barely saves more for a real 20% frequency sacrifice.</li>
+  </ul>
+</section>
+
+<section id="visuals">
+  <h2>7. Visual Outputs</h2>
+  <p class="lead">These are real renders OpenROAD produced during the flow (saved automatically since the flow runs headless) — not artistic diagrams.</p>
+  <div class="img-grid">
+    <figure>
+      <img src="images/final_placement.webp" alt="Standard cell placement, no routing">
+      <figcaption><strong>Placement only.</strong> Individual gates as rectangles snapped into standard-cell rows — the output of the Placement stage, before a single wire is drawn. Pink/red arrows are I/O pins.</figcaption>
+    </figure>
+    <figure>
+      <img src="images/final_routed.webp" alt="Fully routed layout with all metal layers">
+      <figcaption><strong>Full routing.</strong> Same chip, every net now wired. Each color is a different metal layer — this is literal copper geometry from the Routing stage.</figcaption>
+    </figure>
+    <figure>
+      <img src="images/cts_clock_tree.webp" alt="Clock tree topology diagram">
+      <figcaption><strong>Clock tree (CTS output).</strong> Red = source, blue = inserted buffers, red boxes = flip-flops. Notice all leaves land around ~0.07 ns — a <em>balanced</em> tree, exactly why our STA report showed 0.00 ns setup skew.</figcaption>
+    </figure>
+    <figure>
+      <img src="images/final_congestion.webp" alt="Routing congestion heatmap">
+      <figcaption><strong>Congestion heatmap.</strong> Green = free routing tracks, orange/red = crowded. The dark-red cluster near the center lines up with the comparator/control logic — our known critical-path region. Congestion → detours → extra wire delay → can itself cause timing failures.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="challenge">
+  <h2>8. Beyond "Just Relax the Clock" <span class="tag">the real challenge</span></h2>
+  <p class="lead">Loosening the SDC is the easiest lever, but it's a <em>global</em> fix — it slows down the entire chip to save one bad path. Real physical design engineers reach for more surgical tools first. Ordered from least to most invasive, all explained against our actual violated path (§5): <code>a_reg → comparator/control logic → b_mux → b_reg</code>.</p>
+
+  <h3>1. Cell sizing / ECO</h3>
+  <div class="invasiveness"><span>least invasive</span><div class="bar"><span style="width:15%"></div><span>tool-driven, sometimes needs a manual push</span></div>
+  <p>Swap slow, small-drive-strength gates along the critical path for bigger/faster variants of the <em>exact same logic function</em> (e.g. <code>NAND2_X1</code> → <code>NAND2_X4</code>). Nothing about the RTL, netlist connectivity, or floorplan changes — just the physical size of existing cells.</p>
+  <p style="color:var(--text-dim); font-size:0.87rem">We actually already saw this happen automatically: the <code>timing_repair_buffer</code> instances in our metrics (58 at 0.5 ns, up to 166 at 0.3 ns) are exactly the tool running this ECO on its own during optimization.</p>
+  <div class="callout try">
+    <h4>Try it yourself</h4>
+    <pre><code>cd ~/OpenROAD-flow-scripts/flow
+make DESIGN_CONFIG=./designs/nangate45/gcd/config.mk gui_final
+# in the OpenROAD Tcl console:
+report_checks -path_delay max
+resize_instance &lt;instance_name&gt; &lt;bigger_cell_name&gt;
+report_checks -path_delay max   ;# did slack improve?</code></pre>
+  </div>
+
+  <h3>2. Logic restructuring</h3>
+  <div class="invasiveness"><span></span><div class="bar"><span style="width:40%"></div><span>same behavior, different gate-level shape</span></div>
+  <p>Re-implement the identical Boolean function with a shallower/different gate topology — e.g. our 14-gate ripple-style comparator chain could become a shallower tree structure, trading area for logic depth. Must be done at synthesis (different technology mapping) or via RTL rewrite, then reverified for logical equivalence.</p>
+  <p style="color:var(--text-dim); font-size:0.87rem">This is what config knobs like <code>ADDER_MAP_FILE</code> and <code>SWAP_ARITH_OPERATORS</code> (seen in the sky130hd/ibex configs) actually control — picking different arithmetic gate-level implementations.</p>
+
+  <h3>3. Pipelining</h3>
+  <div class="invasiveness"><span></span><div class="bar"><span style="width:90%"></div><span>most invasive — changes microarchitecture/latency</span></div>
+  <p>Insert an extra register stage to break the long comparator→mux→register path into two shorter cycles — e.g. register <code>is_a_lt_b</code> on its own cycle instead of consuming it combinationally in the same one. Buys much higher clock frequency, costs latency (more cycles per GCD iteration) and requires real RTL/FSM redesign plus functional re-verification. This is a different microarchitecture, not just a different implementation of the same one.</p>
+
+  <h3>4. Floorplan / placement tweaks</h3>
+  <div class="invasiveness"><span></span><div class="bar"><span style="width:55%"></div><span>attacks wire delay specifically</span></div>
+  <p>Constrain where <code>a_reg</code>, <code>b_reg</code>, and the comparator sit relative to each other (placement regions/groups) so the wires between them are physically shorter. Recall our congestion heatmap flagged exactly this region as a hotspot — part of that 0.45&nbsp;ns delay is wire delay from cells sitting far apart or routed through congestion, not pure gate delay. This technique attacks only that component.</p>
+
+  <h3>5. Buffering / multi-Vt swaps</h3>
+  <div class="invasiveness"><span></span><div class="bar"><span style="width:35%"></div><span>targeted physical techniques</span></div>
+  <p>Insert dedicated buffers to fix slew on a long wire, or swap specific cells on the critical path to a low-threshold-voltage (low-Vt) variant — same logic function, faster switching, at the cost of higher leakage. Unlike relaxing the whole clock (blunt, affects every path equally), this is a scalpel: only the cells that need it get faster/leakier, the rest of the chip keeps its default, lower-leakage cells.</p>
+  <p style="color:var(--text-dim); font-size:0.87rem"><code>nangate45</code> is single-Vt (academic library), so this move is more illustrative there; <code>sky130hd</code> ships real hd/hs/ls Vt families — a better place to actually try it.</p>
+
+  <div class="callout try">
+    <h4>The actual challenge</h4>
+    <p style="margin:0 0 0.6rem">Go back to the <strong>original violating case</strong> (nangate45/gcd @ 0.25 ns, WNS -0.16 ns) — but this time, instead of touching <code>clk_period</code> in the SDC, try to close the gap using technique #1 (cell sizing/ECO) alone, interactively in the OpenROAD GUI. How much of that -0.16 ns can you claw back without slowing the clock down at all? That's the real day-to-day job of a PPA/physical design engineer.</p>
+  </div>
+</section>
+
+<section id="crosscheck">
+  <h2>9. Cross-Checks — Different Process, Different Scale</h2>
+  <h3>sky130hd (real SkyWater 130nm PDK)</h3>
+  <table>
+    <tr><th>Metric</th><th>nangate45 @0.25ns</th><th>sky130hd @1.1ns</th></tr>
+    <tr><td>WNS</td><td class="num">-0.16 ns</td><td class="num">-1.46 ns</td></tr>
+    <tr><td>TNS</td><td class="num">-7.18 ns</td><td class="num">-65.09 ns</td></tr>
+    <tr><td>Setup violations</td><td class="num">51</td><td class="num">63</td></tr>
+    <tr><td>Critical path depth</td><td class="num">14 gates, 0.45 ns</td><td class="num">15 gates, 2.63 ns</td></tr>
+    <tr><td>Real fmax ceiling</td><td class="num">~2.44 GHz</td><td class="num">~390 MHz</td></tr>
+  </table>
+  <p>Same algorithm, nearly the same gate count — but <strong>~6x slower</strong> per path on real 130nm silicon vs. the synthetic 45nm model. Real transistors on an older node switch slower and drive less current; this is a genuine, expected cost of moving from an idealized teaching library to a real fabricatable process. Left intentionally un-tuned as a reference point rather than "fixed."</p>
+
+  <h3>ibex_core (real RISC-V CPU, same nangate45 PDK)</h3>
+  <table>
+    <tr><th>Metric</th><th>gcd</th><th>ibex_core</th></tr>
+    <tr><td>Instances</td><td class="num">1,073</td><td class="num">31,761</td></tr>
+    <tr><td>Die area</td><td class="num">1,278 µm²</td><td class="num">57,255 µm² (~45x)</td></tr>
+    <tr><td>Full flow runtime</td><td class="num">~90 s</td><td class="num">~873 s (~14.5 min)</td></tr>
+    <tr><td>WNS (shipped constraint)</td><td class="num">-0.16 ns @0.25ns target</td><td class="num">-0.0155 ns @2.2ns target</td></tr>
+    <tr><td>Setup violations</td><td class="num">51</td><td class="num">240 (tiny individual slacks)</td></tr>
+  </table>
+  <p>At CPU scale, a well-chosen constraint can miss by <em>picoseconds</em> across hundreds of paths rather than nanoseconds on one — a different flavor of "almost closed" than our first gcd attempt.</p>
+  <p><strong>Follow-up:</strong> these 240 violations were later diagnosed and closed via a manual + automated ECO (WNS -15.5&nbsp;ps → +5&nbsp;ps, STA-verified) — see <a href="https://github.com/Rennaafi/ibex-core-timing-eco">ibex-core-timing-eco</a>.</p>
+</section>
+
+<section id="glossary">
+  <h2>10. Glossary / Quick Reference</h2>
+  <dl class="glossary">
+    <dt>PDK</dt><dd>Process Design Kit — the fab's rulebook + cell library.</dd>
+    <dt>SDC</dt><dd>Synopsys Design Constraints — where you declare clock/timing intent.</dd>
+    <dt>STA</dt><dd>Static Timing Analysis — checks every path against the SDC using worst-case delay models.</dd>
+    <dt>Setup violation</dt><dd>Data arrives too late for the next clock edge — a speed problem.</dd>
+    <dt>Hold violation</dt><dd>Data arrives too early / overwritten too soon — a race-condition, broken at any speed.</dd>
+    <dt>Slack</dt><dd>Required time − actual time. Negative = violation.</dd>
+    <dt>WNS / TNS</dt><dd>Worst / Total Negative Slack — the two headline signoff numbers.</dd>
+    <dt>fmax</dt><dd>The real maximum frequency the current implementation can run at, per STA — not what you asked for in the SDC.</dd>
+    <dt>CTS</dt><dd>Clock Tree Synthesis — builds the balanced buffer network distributing the clock.</dd>
+    <dt>DRC / LVS</dt><dd>Design Rule Check / Layout-vs-Schematic — geometric and logical-equivalence signoff checks (not yet covered hands-on in this review — a good next topic).</dd>
+    <dt>ECO</dt><dd>Engineering Change Order — a small, targeted fix (cell swap, buffer insertion) applied after the main flow, instead of re-running everything.</dd>
+    <dt>Vt (threshold voltage)</dt><dd>Lower Vt = faster switching but more leakage power; higher Vt = slower but leaner. Real PDKs offer multiple Vt cell families to trade locally.</dd>
+  </dl>
+</section>
+
+<footer>
+  Generated as personal review material from a guided walkthrough of OpenROAD-flow-scripts (ORFS). Numbers throughout are real values pulled directly from <code>reports/&lt;platform&gt;/&lt;design&gt;/base/6_finish.rpt</code> and <code>logs/&lt;platform&gt;/&lt;design&gt;/base/6_report.json</code> in the actual run — not illustrative estimates.
+</footer>
+</main>
+</div>
+</body>
+</html>

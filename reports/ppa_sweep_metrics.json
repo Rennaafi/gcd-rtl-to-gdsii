@@ -1,0 +1,64 @@
+{
+  "design": "gcd",
+  "platform": "nangate45",
+  "description": "Clock-period sweep on the same design/platform, holding everything else constant. Values pulled directly from OpenROAD's 6_report.json / 6_finish.rpt for each run.",
+  "sweep": [
+    {
+      "clk_period_ns": 0.25,
+      "target_freq_ghz": 4.00,
+      "wns_ns": -0.16,
+      "tns_ns": -7.18,
+      "setup_violations": 51,
+      "hold_violations": 0,
+      "achieved_fmax_ghz": 2.44,
+      "stdcell_area_um2": null,
+      "total_power_mw": 6.38,
+      "note": "period_min reported as 0.41ns (fmax 2435.34 MHz); stdcell area not captured before this run's files were overwritten by later sweep points"
+    },
+    {
+      "clk_period_ns": 0.30,
+      "target_freq_ghz": 3.33,
+      "wns_ns": -0.114055,
+      "tns_ns": -4.77386,
+      "setup_violations": 49,
+      "hold_violations": 0,
+      "achieved_fmax_ghz": 2.41514,
+      "stdcell_area_um2": 894.026,
+      "total_power_mw": 4.9766
+    },
+    {
+      "clk_period_ns": 0.40,
+      "target_freq_ghz": 2.50,
+      "wns_ns": -0.0236019,
+      "tns_ns": -0.800481,
+      "setup_violations": 45,
+      "hold_violations": 0,
+      "achieved_fmax_ghz": 2.36071,
+      "stdcell_area_um2": 855.722,
+      "total_power_mw": 3.61019
+    },
+    {
+      "clk_period_ns": 0.50,
+      "target_freq_ghz": 2.00,
+      "wns_ns": 0.0375065,
+      "tns_ns": 0.0,
+      "setup_violations": 0,
+      "hold_violations": 0,
+      "achieved_fmax_ghz": 2.21889,
+      "stdcell_area_um2": 674.576,
+      "total_power_mw": 2.22434,
+      "note": "signoff-clean baseline; matches nangate45_0.50ns_signoff_clean_metrics.json"
+    },
+    {
+      "clk_period_ns": 0.60,
+      "target_freq_ghz": 1.67,
+      "wns_ns": 0.118203,
+      "tns_ns": 0.0,
+      "setup_violations": 0,
+      "hold_violations": 0,
+      "achieved_fmax_ghz": 2.17639,
+      "stdcell_area_um2": 674.842,
+      "total_power_mw": 1.85873
+    }
+  ]
+}
